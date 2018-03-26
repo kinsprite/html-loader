@@ -37,6 +37,19 @@ module.exports = function(content) {
 		else
 			throw new Error("Invalid value to config parameter attrs");
 	}
+
+	var interpolateScript = '';
+
+	if (config.interpolate && config.interpolate !== 'require') {
+		var interpolateRegex = /[\s\n\r]*<!--[\s\n\r]*@interpolate[\s\n\r]+([^]+?)[\s\n\r]*-->[\s\n\r]*/;
+		var findRes = interpolateRegex.exec(content);
+
+		if (findRes && findRes.length === 2) {
+			interpolateScript = findRes[1];
+			content = content.replace(interpolateRegex, '');
+		}
+	}
+
 	var root = config.root;
 	var links = attrParse(content, function(tag, attr) {
 		var res = attributes.find(function(a) {
@@ -137,17 +150,17 @@ module.exports = function(content) {
 		content = JSON.stringify(content);
 	}
 
-    var exportsString = "module.exports = ";
+	var exportsString = "module.exports = ";
 	if (config.exportAsDefault) {
-        exportsString = "exports.default = ";
+		exportsString = "exports.default = ";
 
 	} else if (config.exportAsEs6Default) {
-        exportsString = "export default ";
+		exportsString = "export default ";
 	}
 
- 	return exportsString + content.replace(/xxxHTMLLINKxxx[0-9\.]+xxx/g, function(match) {
+ 	return interpolateScript + exportsString + content.replace(/xxxHTMLLINKxxx[0-9\.]+xxx/g, function(match) {
 		if(!data[match]) return match;
-		
+
 		var urlToRequest;
 
 		if (config.interpolate === 'require') {
@@ -155,7 +168,7 @@ module.exports = function(content) {
 		} else {
 			urlToRequest = loaderUtils.urlToRequest(data[match], root);
 		}
-		
+
 		return '" + require(' + JSON.stringify(urlToRequest) + ') + "';
 	}) + ";";
 
